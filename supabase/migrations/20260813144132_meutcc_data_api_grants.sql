@@ -1,0 +1,10 @@
+grant usage on schema public to authenticated;
+grant select, update on public.profiles to authenticated;
+grant select, insert, update on public.cohorts to authenticated;
+grant select on public.enrollments to authenticated;
+grant select, update on public.tccs to authenticated;
+grant select, insert, update on public.deliveries to authenticated;
+grant select, insert, update on public.appointments to authenticated;
+grant select, insert on public.messages to authenticated;
+grant select, insert on public.references to authenticated;
+grant usage, select on all sequences in schema public to authenticated;

@@ -1,0 +1,3 @@
+create policy appointments_select on public.appointments for select to authenticated using (student_id = (select auth.uid()) or (select private.is_advisor_for_cohort(cohort_id)));
+create policy appointments_insert on public.appointments for insert to authenticated with check (student_id = (select auth.uid()) or (select private.is_advisor_for_cohort(cohort_id)));
+create policy appointments_update on public.appointments for update to authenticated using (student_id = (select auth.uid()) or (select private.is_advisor_for_cohort(cohort_id))) with check (student_id = (select auth.uid()) or (select private.is_advisor_for_cohort(cohort_id)));
