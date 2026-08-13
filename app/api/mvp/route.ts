@@ -44,8 +44,14 @@ async function buildPayload(context: SessionContext) {
     rowError(result.error);
     cohort = result.data;
   } else {
-    const result = await supabase.from("enrollments").select("cohorts(*)").eq("student_id", user.id).limit(1).maybeSingle();
+    let result = await supabase.from("enrollments").select("cohorts(*)").eq("student_id", user.id).limit(1).maybeSingle();
     rowError(result.error);
+    if (!result.data) {
+      const claim = await supabase.rpc("claim_student_invitation");
+      rowError(claim.error);
+      result = await supabase.from("enrollments").select("cohorts(*)").eq("student_id", user.id).limit(1).maybeSingle();
+      rowError(result.error);
+    }
     const nested = result.data?.cohorts;
     cohort = (Array.isArray(nested) ? nested[0] : nested) as Record<string, unknown> | null;
   }
@@ -59,13 +65,14 @@ async function buildPayload(context: SessionContext) {
   const ownTcc = profile.role === "student" ? tccRows.find((row) => row.student_id === user.id) : null;
   const focusTcc = ownTcc ?? tccRows[0] ?? null;
 
-  const [deliveryResult, appointmentResult, messageResult, referenceResult] = await Promise.all([
+  const [deliveryResult, appointmentResult, messageResult, referenceResult, invitationResult] = await Promise.all([
     focusTcc ? supabase.from("deliveries").select("*").eq("tcc_id", focusTcc.id).order("id") : Promise.resolve({ data: [], error: null }),
     supabase.from("appointments").select("*, profiles!appointments_student_id_fkey(name,email)").eq("cohort_id", cohort.id).eq("status", "confirmado").order("starts_at"),
     focusTcc ? supabase.from("messages").select("*, profiles!messages_author_id_fkey(name,role)").eq("tcc_id", focusTcc.id).order("created_at") : Promise.resolve({ data: [], error: null }),
     focusTcc ? supabase.from("references").select("*").eq("tcc_id", focusTcc.id).order("created_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
+    profile.role === "advisor" ? supabase.from("student_invitations").select("*").eq("cohort_id", cohort.id).order("name") : Promise.resolve({ data: [], error: null }),
   ]);
-  rowError(deliveryResult.error); rowError(appointmentResult.error); rowError(messageResult.error); rowError(referenceResult.error);
+  rowError(deliveryResult.error); rowError(appointmentResult.error); rowError(messageResult.error); rowError(referenceResult.error); rowError(invitationResult.error);
 
   return {
     needsJoin: false,
@@ -89,6 +96,10 @@ async function buildPayload(context: SessionContext) {
       return { id: row.id, authorName: author?.name, authorRole: author?.role === "advisor" ? "Orientador" : "Aluna", body: row.body, createdAt: row.created_at, readAt: row.read_at };
     }),
     references: (referenceResult.data ?? []).map((row) => ({ id: row.id, type: row.type, title: row.title, note: row.note })),
+    invitations: (invitationResult.data ?? []).map((row) => ({
+      id: row.id, email: row.email, name: row.name, studentNumber: row.student_number,
+      theme: row.theme, area: row.area, status: row.status,
+    })),
   };
 }
 
@@ -122,7 +133,34 @@ export async function POST(request: Request) {
       focusTcc?: { id: number; studentId: string } | null;
       appointments?: Array<{ id: number; studentId: string }>;
     };
-    if (!payload.profile || !payload.cohort || !payload.focusTcc) return Response.json({ error: "TCC não encontrado" }, { status: 404 });
+    if (!payload.profile || !payload.cohort) return Response.json({ error: "Turma não encontrada" }, { status: 404 });
+
+    if (action === "import_students") {
+      if (payload.profile.role !== "advisor") return Response.json({ error: "Apenas o orientador pode importar alunos" }, { status: 403 });
+      const rows = Array.isArray(body.students) ? body.students : [];
+      if (!rows.length || rows.length > 100) return Response.json({ error: "A planilha deve conter de 1 a 100 alunos" }, { status: 400 });
+      const invitations = rows.map((raw) => {
+        const item = raw as Record<string, unknown>;
+        const email = String(item.email ?? "").trim().toLowerCase();
+        const name = String(item.name ?? "").trim();
+        if (!name || !email.includes("@")) throw new Error("Há linhas sem nome ou e-mail válido");
+        return {
+          cohort_id: payload.cohort!.id,
+          email,
+          name,
+          student_number: String(item.studentNumber ?? "").trim() || null,
+          theme: String(item.theme ?? "").trim() || "Tema em definição",
+          area: String(item.area ?? "").trim() || "Área a definir",
+          status: "pending",
+          claimed_by: null,
+          claimed_at: null,
+        };
+      });
+      rowError((await supabase.from("student_invitations").upsert(invitations, { onConflict: "cohort_id,email" })).error);
+      return Response.json(await buildPayload(context));
+    }
+
+    if (!payload.focusTcc) return Response.json({ error: "Nenhum aluno vinculado à turma" }, { status: 404 });
 
     if (action === "message") {
       const text = String(body.text ?? "").trim();
