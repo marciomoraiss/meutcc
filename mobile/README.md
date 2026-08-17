@@ -2,13 +2,16 @@
 
 Aplicativo nativo do MEUTCC para iPhone e Android, mantido em uma pasta independente do painel web.
 
-## Estado da fase 1
+## Estado da fase 2
 
-- Expo SDK 57, React Native e TypeScript configurados.
-- Identidade visual inicial alinhada ao painel web.
-- Perfis de desenvolvimento, teste interno e produção preparados para EAS Build.
-- Cliente Supabase preparado com chave publicável e sessão local criptografada.
-- Cliente da API preparado para reutilizar as regras de negócio já hospedadas.
+- Base Expo SDK 57, React Native e TypeScript preservada.
+- Identidade institucional da TE ORIENTO configurada.
+- Acesso sem senha por link enviado ao e-mail.
+- Retorno ao aplicativo pelo esquema `meutcc://`.
+- Sessão persistida de forma protegida no aparelho.
+- Navegação separada por perfil de aluno e orientador.
+- Primeira tela real do aluno conectada à API autenticada.
+- Vínculo por convite importado ou código da turma.
 - Nenhuma alteração necessária na versão web.
 
 ## Configuração local
@@ -19,14 +22,8 @@ Aplicativo nativo do MEUTCC para iPhone e Android, mantido em uma pasta independ
 
 Nunca coloque a chave secreta ou `service_role` do Supabase no aplicativo.
 
-## Identidade de publicação
+## Configuração externa pendente
 
-- Aplicativo: **MEUTCC**
-- Assinatura: **Seu TCC em acompanhamento**
-- Publicador: **TE ORIENTO**
-- Suporte: **contato@teoriento.com.br**
-- Pacote Android e Bundle ID iOS: `br.com.teoriento.meutcc`
+Antes do teste em aparelho, cadastre `meutcc://auth/callback` como URL permitida no Supabase e configure um SMTP próprio para o domínio `teoriento.com.br`.
 
-Os identificadores foram definidos com base no domínio institucional informado. Eles devem ser registrados nas contas da TE ORIENTO antes do primeiro envio às lojas.
-
-Consulte [docs/fase-1-identidade.md](docs/fase-1-identidade.md) e [docs/dados-para-as-lojas.md](docs/dados-para-as-lojas.md).
+Consulte [docs/fase-2-autenticacao.md](docs/fase-2-autenticacao.md) para o roteiro completo.
