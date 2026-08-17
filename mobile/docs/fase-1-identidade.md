@@ -1,13 +1,24 @@
 # Fase 1 — Preparação técnica e identidade
 
-## Identidade inicial
+## Identidade definida
 
 - Nome: **MEUTCC**
 - Assinatura: **Seu TCC em acompanhamento**
+- Publicador: **TE ORIENTO**
+- E-mail público de suporte: **contato@teoriento.com.br**
 - Categoria principal: **Educação**
 - Cores: azul-marinho `#172743`, vermelho `#B74444` e dourado `#B88A3B`
 - Esquema de abertura do aplicativo: `meutcc://`
-- Identificador provisório: `com.marciomorais.meutcc`
+- Bundle ID iOS: `br.com.teoriento.meutcc`
+- Pacote Android: `br.com.teoriento.meutcc`
+
+O identificador institucional substitui o identificador pessoal provisório. Ele segue o domínio informado pela TE ORIENTO e deve ser confirmado nas contas oficiais antes do primeiro envio.
+
+## Verificação preliminar do nome
+
+Em 17 de agosto de 2026, buscas públicas por **MEUTCC** nas páginas indexadas da App Store e do Google Play não localizaram outro aplicativo com esse nome exato. Foi encontrada a grafia distinta **MyTCC** no Google Play e o domínio comercial `meutcc.org` fora das lojas.
+
+Essa busca não reserva o nome, não substitui a validação feita ao criar o registro no App Store Connect e não constitui pesquisa de marca no INPI.
 
 ## Arquitetura aprovada para desenvolvimento
 
@@ -18,15 +29,16 @@
 - Sessões são persistidas de forma criptografada no aparelho.
 - Credenciais administrativas do Supabase nunca são incluídas no aplicativo.
 
-## Decisões do titular antes de criar os registros nas lojas
+## Dados empresariais ainda necessários
 
-1. Publicação em nome de pessoa física ou de organização/pessoa jurídica.
-2. Nome público do desenvolvedor que aparecerá nas lojas.
-3. Confirmação do identificador `com.marciomorais.meutcc`.
-4. E-mail público de suporte e endereço do site de suporte.
-5. Titular da marca e responsável pela política de privacidade/LGPD.
+Antes de abrir ou verificar as contas de organização nas lojas, confirmar:
 
-Essas escolhas não bloqueiam a construção das telas, mas devem ser concluídas antes da criação definitiva do aplicativo no App Store Connect e no Google Play Console.
+1. Razão social completa e CNPJ da pessoa jurídica.
+2. Endereço e telefone comerciais.
+3. Número D-U-N-S associado exatamente à razão social e ao endereço.
+4. Titularidade ou autorização de uso do domínio `teoriento.com.br`.
+5. URL pública de suporte e URL da política de privacidade/LGPD.
+6. Nome comercial **TE ORIENTO** registrado ou autorizado para exibição, quando exigido.
 
 ## Próxima etapa técnica
 

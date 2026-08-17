@@ -19,8 +19,14 @@ Aplicativo nativo do MEUTCC para iPhone e Android, mantido em uma pasta independ
 
 Nunca coloque a chave secreta ou `service_role` do Supabase no aplicativo.
 
-## Identificadores provisórios
+## Identidade de publicação
 
-O pacote Android e o Bundle ID iOS estão provisoriamente definidos como `com.marciomorais.meutcc`. Eles deverão ser confirmados antes de o aplicativo ser criado nas lojas.
+- Aplicativo: **MEUTCC**
+- Assinatura: **Seu TCC em acompanhamento**
+- Publicador: **TE ORIENTO**
+- Suporte: **contato@teoriento.com.br**
+- Pacote Android e Bundle ID iOS: `br.com.teoriento.meutcc`
 
-Consulte [docs/fase-1-identidade.md](docs/fase-1-identidade.md) para as decisões ainda pendentes.
+Os identificadores foram definidos com base no domínio institucional informado. Eles devem ser registrados nas contas da TE ORIENTO antes do primeiro envio às lojas.
+
+Consulte [docs/fase-1-identidade.md](docs/fase-1-identidade.md) e [docs/dados-para-as-lojas.md](docs/dados-para-as-lojas.md).

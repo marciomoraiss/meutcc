@@ -9,11 +9,11 @@
     "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.marciomorais.meutcc",
+      "bundleIdentifier": "br.com.teoriento.meutcc",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.marciomorais.meutcc",
+      "package": "br.com.teoriento.meutcc",
       "adaptiveIcon": {
         "backgroundColor": "#172743",
         "foregroundImage": "./assets/images/android-icon-foreground.png"

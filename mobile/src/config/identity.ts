@@ -1,8 +1,12 @@
 export const identity = {
   name: 'MEUTCC',
   tagline: 'Seu TCC em acompanhamento',
+  publisherTradeName: 'TE ORIENTO',
+  supportEmail: 'contato@teoriento.com.br',
   storeCategory: 'Educação',
   scheme: 'meutcc',
+  iosBundleIdentifier: 'br.com.teoriento.meutcc',
+  androidPackage: 'br.com.teoriento.meutcc',
 } as const;
 
 export const palette = {
