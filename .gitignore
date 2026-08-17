@@ -37,6 +37,8 @@ yarn-error.log*
 /.sites-runtime/
 /outputs/
 /work/
+/.npm-mobile-cache/
+/.expo-mobile/
 
 # typescript
 next-env.d.ts
