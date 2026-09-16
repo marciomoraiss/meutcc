@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     const payload = await buildPayload(context) as {
       profile?: { id: string; role: "advisor" | "student" };
       cohort?: { id: string; weeklyLimit: number };
-      focusTcc?: { id: number; studentId: string } | null;
+      focusTcc?: { id: number; studentId: string; progress: number } | null;
       appointments?: Array<{ id: number; studentId: string }>;
     };
     if (!payload.profile || !payload.cohort) return Response.json({ error: "Turma não encontrada" }, { status: 404 });
@@ -181,11 +181,26 @@ export async function POST(request: Request) {
       if (payload.profile.role !== "advisor") return Response.json({ error: "Apenas o orientador pode avaliar" }, { status: 403 });
       const status = String(body.status ?? "");
       if (!["Aprovado", "Requer ajustes"].includes(status)) return Response.json({ error: "Status inválido" }, { status: 400 });
-      const latest = await supabase.from("deliveries").select("id").eq("tcc_id", payload.focusTcc.id).eq("kind", "Capítulo 2").order("version", { ascending: false }).limit(1).maybeSingle();
-      rowError(latest.error);
-      if (!latest.data) return Response.json({ error: "Entrega não encontrada" }, { status: 404 });
-      rowError((await supabase.from("deliveries").update({ status, advisor_note: String(body.note ?? ""), reviewed_at: new Date().toISOString() }).eq("id", latest.data.id)).error);
-      if (status === "Aprovado") rowError((await supabase.from("tccs").update({ progress: 70, current_stage: "Marco 2 · Capítulo 3", last_contact_at: new Date().toISOString() }).eq("id", payload.focusTcc.id)).error);
+      const deliveryId = Number(body.deliveryId);
+      if (!Number.isSafeInteger(deliveryId) || deliveryId <= 0) return Response.json({ error: "Informe a entrega a avaliar" }, { status: 400 });
+      const delivery = await supabase.from("deliveries").select("id,kind").eq("tcc_id", payload.focusTcc.id).eq("id", deliveryId).maybeSingle();
+      rowError(delivery.error);
+      if (!delivery.data) return Response.json({ error: "Entrega não encontrada" }, { status: 404 });
+      const updated = await supabase.from("deliveries").update({ status, advisor_note: String(body.note ?? ""), reviewed_at: new Date().toISOString() })
+        .eq("tcc_id", payload.focusTcc.id).eq("id", deliveryId).select("id").maybeSingle();
+      rowError(updated.error);
+      if (!updated.data) return Response.json({ error: "Sem permissão para avaliar esta entrega" }, { status: 403 });
+      if (status === "Aprovado") {
+        const kind = delivery.data.kind as string;
+        const milestoneProgress = kind === "Marco 1 — Tema e sumário" ? 20
+          : kind === "Capítulos centrais" || kind === "Capítulo 2" || kind === "Capítulo 3" ? 70
+          : kind === "Introdução e conclusão" ? 100 : null;
+        if (milestoneProgress !== null) {
+          const progress = Math.max(Number(payload.focusTcc.progress ?? 0), milestoneProgress);
+          const currentStage = progress >= 100 ? "Concluído" : progress >= 70 ? "Marco 3 · Introdução e conclusão" : "Marco 2 · Capítulos centrais";
+          rowError((await supabase.from("tccs").update({ progress, current_stage: currentStage, last_contact_at: new Date().toISOString() }).eq("id", payload.focusTcc.id)).error);
+        }
+      }
     } else if (action === "submit") {
       if (payload.profile.role !== "student") return Response.json({ error: "Apenas o aluno pode enviar entregas" }, { status: 403 });
       const kind = String(body.kind ?? "Capítulo 3");
