@@ -31,11 +31,17 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const wantsJson = request.headers.get("accept")?.includes("application/json") ?? false;
+  const headers = { "Cache-Control": "private, no-store", Vary: "Accept, Authorization" };
+  const fail = (message: string, status: number) => wantsJson
+    ? Response.json({ error: message }, { status, headers })
+    : new Response(message, { status, headers });
   const context = await getSessionContext(request);
-  if (!context) return new Response("Autenticação necessária", { status: 401 });
+  if (!context) return fail("Autenticação necessária. Entre novamente.", 401);
   const key = new URL(request.url).searchParams.get("key");
-  if (!key) return new Response("Arquivo não informado", { status: 400 });
+  if (!key) return fail("Arquivo não informado", 400);
   const { data, error } = await context.supabase.storage.from(BUCKET).createSignedUrl(key, 60);
-  if (error || !data?.signedUrl) return new Response("Arquivo não encontrado", { status: 404 });
-  return Response.redirect(data.signedUrl, 302);
+  if (error || !data?.signedUrl) return fail("Arquivo não encontrado ou acesso não permitido", 404);
+  if (wantsJson) return Response.json({ signedUrl: data.signedUrl }, { headers });
+  return new Response(null, { status: 302, headers: { ...headers, Location: data.signedUrl } });
 }

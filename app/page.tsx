@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabase/client";
+import { getDeliveryDownloadUrl } from "../lib/deliveries";
 
 type Role = "advisor" | "student";
 type Page = "dashboard" | "classroom" | "student" | "schedule" | "mentoring";
@@ -187,12 +188,39 @@ function Classroom({ notify, students, invitations, onImport }: { notify: (messa
 function Field({ label, value }: { label: string; value: string }) { return <label><span>{label}</span><input defaultValue={value} /></label>; }
 function Rule({ title, value }: { title: string; value: string }) { return <article><span className="rule-icon">✓</span><span><strong>{title}</strong><small>{value}</small></span></article>; }
 
+function DeliveryFileButton({ fileKey }: { fileKey: string }) {
+  const [opening, setOpening] = useState(false);
+  const [error, setError] = useState("");
+  const open = async () => {
+    if (opening) return;
+    setError("");
+    // Open synchronously so the browser recognizes the user's click.
+    const tab = window.open("about:blank", "_blank");
+    if (!tab) {
+      setError("Permita abrir novas abas para visualizar o arquivo.");
+      return;
+    }
+    tab.opener = null;
+    setOpening(true);
+    try {
+      const url = await getDeliveryDownloadUrl(fileKey);
+      if (!tab.closed) tab.location.replace(url);
+    } catch (cause) {
+      tab.close();
+      setError(cause instanceof Error ? cause.message : "Não foi possível abrir o arquivo.");
+    } finally {
+      setOpening(false);
+    }
+  };
+  return <><button type="button" className="file-button" disabled={opening} onClick={() => void open()}>{opening ? "Abrindo…" : "Abrir arquivo enviado"}</button>{error && <p className="inline-empty" role="alert">{error}</p>}</>;
+}
+
 function StudentRecord({ reviewStatus, setReviewStatus, onMentoring, deliveries, student }: { reviewStatus: string; setReviewStatus: (value: string, note: string) => Promise<void>; onMentoring: () => void; deliveries?: MvpData["deliveries"]; student?: NonNullable<MvpData["students"]>[number] }) {
   const [note, setNote] = useState("");
   const rows = deliveries ?? [];
   const initials = (student?.name ?? "Aluno").split(" ").map((name) => name[0]).slice(0, 2).join("");
   const latest = rows.at(-1);
-  return <><PageHead eyebrow="Ficha individual" title={student?.name ?? "Aluno"} text={`${student?.area ?? "Área a definir"} · ${student?.theme ?? "Tema em definição"}`} action={<button className="secondary" onClick={onMentoring}>Abrir mentoria</button>} /><div className="student-summary"><span className="avatar xlarge">{initials}</span><div><span className="eyebrow dark">Progresso geral</span><strong>{student?.progress ?? 0}%</strong><span className="progress large"><i style={{width: `${student?.progress ?? 0}%`}} /></span><small>{student?.currentStage ?? "Marco 1"}</small></div><div><span className="eyebrow dark">Entregas</span><strong>{rows.length}</strong><small>Versões registradas</small></div><div><span className="eyebrow dark">Situação</span><strong>{latest?.status ?? "Iniciando"}</strong><small>Acompanhamento real</small></div></div><div className="record-grid"><section className="panel trail-panel"><h2>Trilha acadêmica</h2><Milestone number="1" title="Marco 1 — Planejamento" text="Tema, problema, objetivos e sumário" status={student?.progress && student.progress >= 20 ? "Concluído" : "Em andamento"} done={Boolean(student?.progress && student.progress >= 20)} current={!student?.progress || student.progress < 20} /><Milestone number="2" title="Marco 2 — Desenvolvimento" text="Capítulos centrais do trabalho" status={student?.progress && student.progress >= 20 ? "Em andamento" : "Bloqueado"} current={Boolean(student?.progress && student.progress >= 20)} /><Milestone number="3" title="Marco 3 — Lapidação final" text="Introdução e conclusão" status="Bloqueado" /></section><aside className="panel review-panel">{latest ? <><span className="eyebrow dark">Analisar entrega</span><h2>{latest.kind} · versão {latest.version}</h2><p>Status atual: {reviewStatus}</p>{latest.fileKey && <a className="file-button" href={`/api/files?key=${encodeURIComponent(latest.fileKey)}`}>Abrir arquivo enviado</a>}<label><span>Parecer</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Registre as orientações para o aluno." /></label><div className="split-actions"><button className="secondary danger" onClick={() => setReviewStatus("Requer ajustes", note)}>Requer ajustes</button><button className="primary" onClick={() => setReviewStatus("Aprovado", note)}>Aprovar</button></div></> : <><span className="eyebrow dark">Entregas</span><h2>Nenhum arquivo recebido</h2><p>Esta área será liberada quando o aluno enviar a primeira versão.</p></>}</aside></div><section className="panel"><div className="panel-head"><div><h2>Versões recebidas</h2><p>O histórico é preservado sem sobrescrita.</p></div></div>{rows.length ? rows.map((version)=><div className="version-row" key={version.id}><span className="doc-icon">DOC</span><span><strong>{version.kind} · v{version.version}</strong><small>{version.fileName ?? "Registro acadêmico"}</small></span><span className={`status ${version.status.toLowerCase().replace(" ", "-")}`}>{version.status}</span></div>) : <p className="inline-empty">Nenhuma versão enviada.</p>}</section></>;
+  return <><PageHead eyebrow="Ficha individual" title={student?.name ?? "Aluno"} text={`${student?.area ?? "Área a definir"} · ${student?.theme ?? "Tema em definição"}`} action={<button className="secondary" onClick={onMentoring}>Abrir mentoria</button>} /><div className="student-summary"><span className="avatar xlarge">{initials}</span><div><span className="eyebrow dark">Progresso geral</span><strong>{student?.progress ?? 0}%</strong><span className="progress large"><i style={{width: `${student?.progress ?? 0}%`}} /></span><small>{student?.currentStage ?? "Marco 1"}</small></div><div><span className="eyebrow dark">Entregas</span><strong>{rows.length}</strong><small>Versões registradas</small></div><div><span className="eyebrow dark">Situação</span><strong>{latest?.status ?? "Iniciando"}</strong><small>Acompanhamento real</small></div></div><div className="record-grid"><section className="panel trail-panel"><h2>Trilha acadêmica</h2><Milestone number="1" title="Marco 1 — Planejamento" text="Tema, problema, objetivos e sumário" status={student?.progress && student.progress >= 20 ? "Concluído" : "Em andamento"} done={Boolean(student?.progress && student.progress >= 20)} current={!student?.progress || student.progress < 20} /><Milestone number="2" title="Marco 2 — Desenvolvimento" text="Capítulos centrais do trabalho" status={student?.progress && student.progress >= 20 ? "Em andamento" : "Bloqueado"} current={Boolean(student?.progress && student.progress >= 20)} /><Milestone number="3" title="Marco 3 — Lapidação final" text="Introdução e conclusão" status="Bloqueado" /></section><aside className="panel review-panel">{latest ? <><span className="eyebrow dark">Analisar entrega</span><h2>{latest.kind} · versão {latest.version}</h2><p>Status atual: {reviewStatus}</p>{latest.fileKey && <DeliveryFileButton fileKey={latest.fileKey} />}<label><span>Parecer</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Registre as orientações para o aluno." /></label><div className="split-actions"><button className="secondary danger" onClick={() => setReviewStatus("Requer ajustes", note)}>Requer ajustes</button><button className="primary" onClick={() => setReviewStatus("Aprovado", note)}>Aprovar</button></div></> : <><span className="eyebrow dark">Entregas</span><h2>Nenhum arquivo recebido</h2><p>Esta área será liberada quando o aluno enviar a primeira versão.</p></>}</aside></div><section className="panel"><div className="panel-head"><div><h2>Versões recebidas</h2><p>O histórico é preservado sem sobrescrita.</p></div></div>{rows.length ? rows.map((version)=><div className="version-row" key={version.id}><span className="doc-icon">DOC</span><span><strong>{version.kind} · v{version.version}</strong><small>{version.fileName ?? "Registro acadêmico"}</small></span><span className={`status ${version.status.toLowerCase().replace(" ", "-")}`}>{version.status}</span></div>) : <p className="inline-empty">Nenhuma versão enviada.</p>}</section></>;
 }
 
 function Milestone({ number, title, text, status, done, current }: { number: string; title: string; text: string; status: string; done?: boolean; current?: boolean }) { return <article className={`milestone ${done ? "done" : current ? "current" : "locked"}`}><span className="milestone-node">{done ? "✓" : number}</span><span><strong>{title}</strong><small>{text}</small></span><b>{status}</b></article>; }
