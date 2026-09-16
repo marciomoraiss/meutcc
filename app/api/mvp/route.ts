@@ -1,4 +1,5 @@
 import { getSessionContext, type SessionContext } from "../_lib/session";
+import { isValidOrientationSlot, weekStartFor } from "../../../lib/schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ async function ensureAdvisorCohort(context: SessionContext, profile: Record<stri
   if (profile.role !== "advisor") return;
   const { error } = await context.supabase.from("cohorts").upsert({
     name: "TCC II — Direito — Turma A", course: "Direito", term: TERM,
-    advisor_id: context.user.id, join_code: JOIN_CODE, chapter_days: 15, weekly_limit: 6, absent_days: 15,
+    advisor_id: context.user.id, join_code: JOIN_CODE, chapter_days: 15, weekly_limit: 8, absent_days: 15,
   }, { onConflict: "advisor_id,term", ignoreDuplicates: true });
   rowError(error);
 }
@@ -75,6 +76,8 @@ async function buildPayload(context: SessionContext) {
   rowError(deliveryResult.error); rowError(appointmentResult.error); rowError(messageResult.error); rowError(referenceResult.error); rowError(invitationResult.error);
 
   const cohortAdvisorId = cohort.advisor_id;
+  const busyResult = await supabase.rpc("get_cohort_busy_slots", { p_cohort_id: cohort.id });
+  rowError(busyResult.error);
   let advisorIdentity: { id: string; name: string | null } | null = null;
   if (profile.role === "student") {
     const identityResult = await supabase.rpc("get_cohort_advisor_identity", { p_cohort_id: cohort.id });
@@ -84,6 +87,7 @@ async function buildPayload(context: SessionContext) {
 
   return {
     needsJoin: false,
+    busySlots: (busyResult.data ?? []).map((row: { starts_at: string }) => row.starts_at),
     profile: { id: profile.id, email: profile.email, name: profile.name, role: profile.role },
     cohort: {
       id: cohort.id, name: cohort.name, course: cohort.course, term: cohort.term,
@@ -209,8 +213,10 @@ export async function POST(request: Request) {
       const nextVersion = Number(versions.data?.[0]?.version ?? 0) + 1;
       rowError((await supabase.from("deliveries").insert({ tcc_id: payload.focusTcc.id, kind, version: nextVersion, status: "Em análise", due_at: new Date(Date.now() + 15 * 86400000).toISOString(), file_path: String(body.fileKey ?? ""), file_name: String(body.fileName ?? ""), student_note: String(body.note ?? "") })).error);
     } else if (action === "book") {
+      const startsAt = String(body.startsAt ?? "");
+      if (!isValidOrientationSlot(startsAt)) return Response.json({ error: "Escolha um horário futuro da agenda de setembro a novembro de 2026" }, { status: 400 });
       const studentId = payload.profile.role === "advisor" ? String(body.studentId ?? payload.focusTcc.studentId) : user.id;
-      rowError((await supabase.from("appointments").insert({ cohort_id: payload.cohort.id, student_id: studentId, week_start: new Date().toISOString().slice(0, 10), weekly_position: 1, starts_at: String(body.startsAt ?? ""), subject: String(body.subject ?? "Orientação de TCC") })).error);
+      rowError((await supabase.from("appointments").insert({ cohort_id: payload.cohort.id, student_id: studentId, week_start: weekStartFor(startsAt), weekly_position: 1, starts_at: startsAt, subject: String(body.subject ?? "Orientação de TCC") })).error);
     } else if (action === "cancel") {
       const target = (payload.appointments ?? []).find((item) => item.id === Number(body.id));
       if (!target || (payload.profile.role !== "advisor" && target.studentId !== user.id)) return Response.json({ error: "Agendamento não encontrado" }, { status: 404 });
