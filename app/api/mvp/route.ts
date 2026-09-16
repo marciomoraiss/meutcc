@@ -74,6 +74,14 @@ async function buildPayload(context: SessionContext) {
   ]);
   rowError(deliveryResult.error); rowError(appointmentResult.error); rowError(messageResult.error); rowError(referenceResult.error); rowError(invitationResult.error);
 
+  const cohortAdvisorId = cohort.advisor_id;
+  let advisorIdentity: { id: string; name: string | null } | null = null;
+  if (profile.role === "student") {
+    const identityResult = await supabase.rpc("get_cohort_advisor_identity", { p_cohort_id: cohort.id });
+    rowError(identityResult.error);
+    advisorIdentity = (identityResult.data?.[0] ?? null) as { id: string; name: string | null } | null;
+  }
+
   return {
     needsJoin: false,
     profile: { id: profile.id, email: profile.email, name: profile.name, role: profile.role },
@@ -93,7 +101,10 @@ async function buildPayload(context: SessionContext) {
     }),
     messages: (messageResult.data ?? []).map((row) => {
       const author = row.profiles as Record<string, unknown> | null;
-      return { id: row.id, authorName: author?.name, authorRole: author?.role === "advisor" ? "Orientador" : "Aluna", body: row.body, createdAt: row.created_at, readAt: row.read_at };
+      const isAdvisor = row.author_id === cohortAdvisorId;
+      const advisorName = advisorIdentity && advisorIdentity.id === row.author_id ? advisorIdentity.name : null;
+      const authorName = author?.name ?? advisorName;
+      return { id: row.id, authorName: typeof authorName === "string" && authorName.trim() ? authorName : isAdvisor ? "Orientador" : "Aluno", authorRole: isAdvisor ? "Orientador" : "Aluno", body: row.body, createdAt: row.created_at, readAt: row.read_at };
     }),
     references: (referenceResult.data ?? []).map((row) => ({ id: row.id, type: row.type, title: row.title, note: row.note })),
     invitations: (invitationResult.data ?? []).map((row) => ({
